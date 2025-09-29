@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String?
+  passwordHash   String
+  role           Role      @default(STUDENT)
+  isEmailVerified Boolean  @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+
+  // Relations to specific profiles
+  studentProfile   StudentProfile?
+  instructorProfile InstructorProfile?
+  adminProfile     AdminProfile?
+
+  invitesSent    InstructorInvite[] @relation("Inviter")
+  refreshTokens  RefreshToken[]
+  courses        Course[]  @relation("InstructorCourses")
+  enrollments    Enrollment[]
+  assignments    Assignment[]
+  certificates   Certificate[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+
+model StudentProfile {
+  id             String  @id @default(cuid())
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String  @unique
+  firstName      String?
+  lastName       String?
+  phoneNumber    String?
+  location       String?
+  bio            String?
+  profilePicture String?
+  accountStatus  String  @default("active")
+}
+
+model InstructorProfile {
+  id             String  @id @default(cuid())
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String  @unique
+  firstName      String?
+  lastName       String?
+  expertise      String?
+  bio            String?
+  profilePicture String?
+  accountStatus  String  @default("active")
+}
+
+model AdminProfile {
+  id          String  @id @default(cuid())
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String  @unique
+  displayName String?
+  permissions Json?
+}
+
+
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique // <-- Add @unique here
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model InstructorInvite {
+  id         String   @id @default(cuid())
+  email      String
+  tokenHash  String
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  invitedBy  User?    @relation("Inviter", fields: [invitedById], references: [id])
+  invitedById String?
+  usedById   String?  // user id after signup
+  createdAt  DateTime @default(now())
+}
+
+model Course {
+  id           String       @id @default(cuid())
+  title        String
+  description  String
+  price        Float       @default(0)
+  currency     String      @default("NGN")
+  category     String?
+  status       CourseStatus @default(DRAFT)
+  instructor   User         @relation("InstructorCourses", fields: [instructorId], references: [id])
+  instructorId String
+  lessons      Lesson[]
+  enrollments  Enrollment[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  Assignment Assignment[]
+
+  Certificate Certificate[]
+}
+
+model Lesson {
+  id         String   @id @default(cuid())
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId   String
+  title      String
+  content    String?  // markdown/notes
+  videoUrl   String?  // signed-serving URL saved
+  docUrl     String?  // pdf/docs link
+  isPreview  Boolean  @default(false)
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  Progress Progress[]
+
+  Assignment Assignment[]
+}
+
+model Enrollment {
+  id            String           @id @default(cuid())
+  student       User             @relation(fields: [studentId], references: [id])
+  studentId     String
+  course        Course           @relation(fields: [courseId], references: [id])
+  courseId      String
+  status        EnrollmentStatus @default(PENDING)
+  amount        Float
+  currency      String           @default("NGN")
+  txRef         String?          @unique
+  paymentInfo   Json?
+  progress      Float            @default(0) // 0-100
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  progressRecords Progress[]
+}
+
+model Progress {
+  id          String   @id @default(cuid())
+  enrollment  Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollmentId String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId    String
+  lastPosition Float   @default(0) // seconds
+  completed   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  course     Course   @relation(fields: [courseId], references: [id])
+  courseId   String
+  lesson     Lesson?  @relation(fields: [lessonId], references: [id])
+  lessonId   String?
+  student    User     @relation(fields: [studentId], references: [id])
+  studentId  String
+  fileUrl    String
+  feedback   String?
+  grade      Float?
+  status     String   @default("SUBMITTED")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Certificate {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  student    User     @relation(fields: [studentId], references: [id])
+  studentId  String
+  course     Course   @relation(fields: [courseId], references: [id])
+  courseId   String
+  pdfUrl     String
+  issuedAt   DateTime @default(now())
+  revoked    Boolean  @default(false)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
