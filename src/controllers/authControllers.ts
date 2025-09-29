@@ -9,107 +9,262 @@ import  jwt  from "jsonwebtoken";
 
 
 
+// export const register = async (req: Request, res: Response) => {
+//   try {
+//     const { email, password, role, name } = req.body;
+
+//     // --- 1. Check for existing user ---
+//     const existingUser = await prisma.user.findUnique({ where: { email } });
+//     if (existingUser) {
+//       return res.status(400).json({ message: "User already exists" });
+//     }
+
+
+//     // --- 2. Hash password ---
+//       const hashed = await hashPassword(password);
+
+//     // // --- 3. Create User ---
+//     // const user = await prisma.user.create({
+//     //   data: { name, email, passwordHash: hashed, role },
+//     // });
+
+//     // // --- 4. Create Profile Based on Role ---
+//     // const [firstName, lastName] = name
+//     //   ? name.split(" ", 2)
+//     //   : [role === "INSTRUCTOR" ? "Instructor" : "Student", "User"];
+
+//     // if (role === "STUDENT") {
+//     //   await prisma.studentProfile.create({
+//     //     data: {
+//     //       userId: user.id,
+//     //       firstName: firstName || "Student",
+//     //       lastName: lastName || "User",
+//     //       phoneNumber: "",
+//     //       location: "",
+//     //       bio: "Welcome student!",
+//     //     },
+//     //   });
+//     // }
+
+//     // if (role === "INSTRUCTOR") {
+//     //   await prisma.instructorProfile.create({
+//     //     data: {
+//     //       userId: user.id,
+//     //       firstName: firstName || "Instructor",
+//     //       lastName: lastName || "User",
+//     //       expertise: "General",
+//     //       bio: "Welcome instructor!",
+//     //     },
+//     //   });
+//     // }
+
+//     // if (role === "ADMIN") {
+//     //   await prisma.adminProfile.create({
+//     //     data: {
+//     //       userId: user.id,
+//     //       displayName: firstName || "Admin",
+//     //       permissions: {
+//     //         manageUsers: true,
+//     //         manageCourses: true,
+//     //         viewReports: true,
+//     //       },
+//     //     },
+//     //   });
+//     // }
+
+//     // 3. Prepare user + profile creation in one transaction
+//     const [firstName, lastName] = name
+//       ? name.split(" ", 2)
+//       : [role === "INSTRUCTOR" ? "Instructor" : "Student", "User"];
+
+//     const result = await prisma.$transaction(async (tx) => {
+//       const user = await tx.user.create({
+//         data: { name, email, passwordHash: hashed, role },
+//       });
+
+//       // Profile creation based on role
+//       if (role === "STUDENT") {
+//         await tx.studentProfile.create({
+//           data: {
+//             userId: user.id,
+//             firstName: firstName,
+//             lastName: lastName,
+//             bio: "Welcome student!",
+//           },
+//         });
+//       } else if (role === "INSTRUCTOR") {
+//         await tx.instructorProfile.create({
+//           data: {
+//             userId: user.id,
+//             firstName: firstName,
+//             lastName: lastName,
+//             expertise: "General",
+//             bio: "Welcome instructor!",
+//           },
+//         });
+//       } else if (role === "ADMIN") {
+//         await tx.adminProfile.create({
+//           data: {
+//             userId: user.id,
+//             displayName: firstName,
+//             permissions: {
+//               manageUsers: true,
+//               manageCourses: true,
+//               viewReports: true,
+//             },
+//           },
+//         });
+//       }
+//     // --- 5. Send Welcome Email ---
+//     await sendMail(
+//       user.email,
+//       "Welcome to DevrecruitSchool",
+//       `<p>Hi ${firstName || "there"},</p>
+//        <p>Welcome to DevrecruitSchool! You can now log in and start learning right away.</p>
+//        <p>Best regards,<br/>Let's go!</p>`
+//     );
+
+//     // --- 6. Generate JWT Tokens ---
+//     const accessToken = generateAccessToken(user.id, user.role);
+//     const refreshToken = generateRefreshToken(user.id);
+
+//     // Save hashed refresh token in DB
+//     const hashedRefreshToken = crypto
+//       .createHash("sha256")
+//       .update(refreshToken)
+//       .digest("hex");
+
+//     await prisma.refreshToken.create({
+//       data: {
+//         userId: user.id,
+//         tokenHash: hashedRefreshToken,
+//         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+//       },
+//     });
+
+//     // --- 7. Respond with Created User + Tokens ---
+//     return res.status(201).json({
+//       message: "User created successfully",
+//       user,
+//       tokens: { accessToken, refreshToken },
+//     });
+//   } catch (err) {
+//     console.error("❌ Registration error:", err);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 export const register = async (req: Request, res: Response) => {
   try {
+    console.time("🔑 Total register time");
+
     const { email, password, role, name } = req.body;
 
-    // --- 1. Check for existing user ---
+    console.time("1️⃣ Check existing user");
     const existingUser = await prisma.user.findUnique({ where: { email } });
+    console.timeEnd("1️⃣ Check existing user");
+
     if (existingUser) {
+      console.timeEnd("🔑 Total register time");
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // --- 2. Hash password ---
+    console.time("2️⃣ Hash password");
     const hashed = await hashPassword(password);
+    console.timeEnd("2️⃣ Hash password");
 
-    // --- 3. Create User ---
-    const user = await prisma.user.create({
-      data: { name, email, passwordHash: hashed, role },
-    });
-
-    // --- 4. Create Profile Based on Role ---
     const [firstName, lastName] = name
       ? name.split(" ", 2)
       : [role === "INSTRUCTOR" ? "Instructor" : "Student", "User"];
 
-    if (role === "STUDENT") {
-      await prisma.studentProfile.create({
-        data: {
-          userId: user.id,
-          firstName: firstName || "Student",
-          lastName: lastName || "User",
-          phoneNumber: "",
-          location: "",
-          bio: "Welcome student!",
-        },
+    console.time("3️⃣ DB Transaction (user + profile + refresh token)");
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { name, email, passwordHash: hashed, role },
       });
-    }
 
-    if (role === "INSTRUCTOR") {
-      await prisma.instructorProfile.create({
-        data: {
-          userId: user.id,
-          firstName: firstName || "Instructor",
-          lastName: lastName || "User",
-          expertise: "General",
-          bio: "Welcome instructor!",
-        },
-      });
-    }
-
-    if (role === "ADMIN") {
-      await prisma.adminProfile.create({
-        data: {
-          userId: user.id,
-          displayName: firstName || "Admin",
-          permissions: {
-            manageUsers: true,
-            manageCourses: true,
-            viewReports: true,
+      if (role === "STUDENT") {
+        await tx.studentProfile.create({
+          data: {
+            userId: user.id,
+            firstName: firstName,
+            lastName: lastName,
+            bio: "Welcome student!",
           },
+        });
+      } else if (role === "INSTRUCTOR") {
+        await tx.instructorProfile.create({
+          data: {
+            userId: user.id,
+            firstName: firstName,
+            lastName: lastName,
+            expertise: "General",
+            bio: "Welcome instructor!",
+          },
+        });
+      } else if (role === "ADMIN") {
+        await tx.adminProfile.create({
+          data: {
+            userId: user.id,
+            displayName: firstName,
+            permissions: {
+              manageUsers: true,
+              manageCourses: true,
+              viewReports: true,
+            },
+          },
+        });
+      }
+
+      const refreshToken = generateRefreshToken(user.id);
+      const hashedRefreshToken = crypto
+        .createHash("sha256")
+        .update(refreshToken)
+        .digest("hex");
+
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: hashedRefreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       });
-    }
 
-    // --- 5. Send Welcome Email ---
-    await sendMail(
-      user.email,
+      return { user, refreshToken };
+    });
+    console.timeEnd("3️⃣ DB Transaction (user + profile + refresh token)");
+
+    console.time("4️⃣ Generate Access Token");
+    const accessToken = generateAccessToken(result.user.id, result.user.role);
+    console.timeEnd("4️⃣ Generate Access Token");
+
+    console.time("5️⃣ Send Welcome Email (async)");
+    sendMail(
+      result.user.email,
       "Welcome to DevrecruitSchool",
-      `<p>Hi ${firstName || "there"},</p>
+      `<p>Hi ${firstName},</p>
        <p>Welcome to DevrecruitSchool! You can now log in and start learning right away.</p>
        <p>Best regards,<br/>Let's go!</p>`
-    );
+    )
+      .then(() => console.timeEnd("5️⃣ Send Welcome Email (async)"))
+      .catch((err) => {
+        console.timeEnd("5️⃣ Send Welcome Email (async)");
+        console.error("❌ Failed to send welcome email:", err);
+      });
 
-    // --- 6. Generate JWT Tokens ---
-    const accessToken = generateAccessToken(user.id, user.role);
-    const refreshToken = generateRefreshToken(user.id);
+    console.timeEnd("🔑 Total register time");
 
-    // Save hashed refresh token in DB
-    const hashedRefreshToken = crypto
-      .createHash("sha256")
-      .update(refreshToken)
-      .digest("hex");
-
-    await prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: hashedRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    // --- 7. Respond with Created User + Tokens ---
     return res.status(201).json({
       message: "User created successfully",
-      user,
-      tokens: { accessToken, refreshToken },
+      user: result.user,
+      tokens: { accessToken, refreshToken: result.refreshToken },
     });
   } catch (err) {
     console.error("❌ Registration error:", err);
+    console.timeEnd("🔑 Total register time");
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 
 
 
