@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
      "build": "prisma generate && tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "migrate": "prisma migrate dev",
-    "seed": "ts-node prisma/seed.ts"  },
+    "seed": "ts-node prisma/seed.ts" ,
+    "postinstall": "npm run build && prisma migrate deploy"
+   },
   "keywords": [],
   "author": "",
   "license": "ISC",

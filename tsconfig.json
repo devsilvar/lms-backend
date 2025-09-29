@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
+    "rootDir": "./", // Set rootDir to project root to include both src and prisma
     // "rootDir": "./src",
     "sourceMap": true,
     "resolveJsonModule": true
