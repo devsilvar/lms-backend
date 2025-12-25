@@ -1,9 +1,18 @@
 import { PrismaClient, Role } from "@prisma/client";
-// import { hashPassword } from "../src/utils/password.js";
-
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+// Prisma 7: Setup connection for seed script
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is not set");
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const adminPassword = await bcrypt.hash("admin123" , 12);
