@@ -55,7 +55,6 @@ temp/
 *.tmp
 
 # SSL certificates and keys
-*.pem
 *.key
 *.cert
 *.crt
