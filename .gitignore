@@ -59,6 +59,19 @@ temp/
 *.crt
 *.p12
 *.pfx
+ca-certificate
+ca-certificate.*
+service-ca.pem
+
+# Aiven-specific files
+aiven-credentials.json
+service.json
+aiven.json
+*aiven*.pem
+*aiven*.crt
+*aiven*.key
+aiven-ca.pem
+pg-service.conf
 
 # Database files (if using SQLite locally)
 *.db
