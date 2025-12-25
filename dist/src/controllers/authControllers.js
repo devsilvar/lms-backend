@@ -198,7 +198,7 @@ export const register = async (req, res) => {
                 data: {
                     userId: user.id,
                     tokenHash: hashedRefreshToken,
-                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                    expiresAt: new Date(Date.now() + 50 * 60 * 1000), // 50 minutes
                 },
             });
             return { user, refreshToken };
@@ -250,7 +250,7 @@ export const login = async (req, res) => {
             data: {
                 userId: user.id,
                 tokenHash: hashedRefreshToken,
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+                expiresAt: new Date(Date.now() + 50 * 60 * 1000), // 50 minutes
             },
         });
         return res.json({ accessToken, refreshToken, user: user });
@@ -313,10 +313,6 @@ export const refreshToken = async (req, res) => {
                 return res.status(404).json({ message: "User not found" });
             // ✅ Issue new access token only
             const accessToken = generateAccessToken(user.id, user.role);
-            // Optional: Fetch user from DB for fresh data
-            if (!user)
-                return res.status(404).json({ message: "User not found" });
-            // res.json(user);
             return res.json({ accessToken, user });
         });
     }
@@ -333,7 +329,7 @@ export const logout = async (req, res) => {
         }
         // 1. Hash the incoming plain refresh token
         const hashedRefreshToken = crypto
-            .createHash("sha26")
+            .createHash("sha256")
             .update(refreshToken)
             .digest("hex");
         // 2. Use the HASHED token to find and delete the record

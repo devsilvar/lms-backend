@@ -28,7 +28,18 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 // Mount swagger AFTER app is created and routes are set up
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Graceful shutdown handler
+const shutdown = () => {
+  console.log('🛑 Received shutdown signal, closing server gracefully...');
+  process.exit(0);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📄 Swagger docs available at http://localhost:${PORT}/api-docs`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📄 Swagger docs available at ${process.env.BASE_URL || `http://localhost:${PORT}`}/api-docs`);
+  console.log(`❤️  Health check available at ${process.env.BASE_URL || `http://localhost:${PORT}`}/api/health`);
 });

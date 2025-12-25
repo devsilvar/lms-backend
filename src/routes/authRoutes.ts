@@ -34,6 +34,7 @@ const router = express.Router();
  *               - name
  *               - email
  *               - password
+ *               - role
  *             properties:
  *               name:
  *                 type: string
@@ -45,6 +46,10 @@ const router = express.Router();
  *                 type: string
  *                 format: password
  *                 example: StrongPassword123
+ *               role:
+ *                 type: string
+ *                 enum: [STUDENT, INSTRUCTOR, ADMIN]
+ *                 example: STUDENT
  *     responses:
  *       201:
  *         description: User successfully registered

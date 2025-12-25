@@ -4,8 +4,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url = env("DATABASE_URL")
 }
+
 
 enum Role {
   STUDENT
@@ -26,6 +27,12 @@ enum EnrollmentStatus {
   PAID
   CANCELLED
   REFUNDED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
 }
 
 model User {
@@ -51,7 +58,12 @@ model User {
   assignments    Assignment[]
   certificates   Certificate[]
   passwordResetTokens PasswordResetToken[]
+  quizAttempt QuizAttempt[]
+  submissions      Submission[]
+  reviewsAuthored Review[] @relation("UserReviews")
 }
+
+
 
 
 model StudentProfile {
@@ -111,48 +123,154 @@ model InstructorInvite {
 }
 
 model Course {
-  id           String       @id @default(cuid())
-  title        String
-  description  String
-  price        Float       @default(0)
-  currency     String      @default("NGN")
-  category     String?
-  status       CourseStatus @default(DRAFT)
-  instructor   User         @relation("InstructorCourses", fields: [instructorId], references: [id])
-  instructorId String
+  id               String       @id @default(cuid())
+  title            String
+  description      String
+  price            Float       @default(0)
+  currency         String      @default("NGN")
+  category         String?
+  level            String?      // beginner, intermediate, advanced
+  status           CourseStatus @default(DRAFT)
+  instructor       User         @relation("InstructorCourses", fields: [instructorId], references: [id])
+  instructorId     String
+  duration         Int?         // minutes or hours
+  image            String?      // course image URL
+  rating           Float        @default(0)
+  tags             String[]     // course tags for better searchability
+  targetAudience   String[]     @default([]) // Who this course is for
+  learningOutcomes String[]     @default([]) // What students will learn
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
   lessons      Lesson[]
   enrollments  Enrollment[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  curriculum   Curriculum[]
+  reviews      Review[]
+  assignments  Assignment[]
+  certificates Certificate[]
+  quizzes      Quiz[]
 
-  Assignment Assignment[]
-
-  Certificate Certificate[]
+  @@index([instructorId])
+  @@index([category])
 }
+
+
+model Curriculum {
+  id          String   @id @default(cuid())
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  title       String
+  description String?
+  position    Int      @default(0) // order in the course outline
+  lessons     Lesson[] // lessons grouped under this curriculum
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  author    User     @relation("UserReviews", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  rating    Int      // 1–5 stars
+  title     String?  // Review title/summary
+  comment   String   // Review content (required)
+  reply     String?  // Instructor/admin reply
+  repliedBy String?  // User ID of who replied (instructor/admin)
+  repliedAt DateTime? // When the reply was added
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([authorId])
+}
+
+
+
+model Quiz {
+  id        String     @id @default(cuid())
+  title     String
+  course    Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  questions Question[]
+  attempts  QuizAttempt[]
+   createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([courseId])
+}
+
+
+model Question {
+  id            String       @id @default(cuid())
+  quiz          Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId        String
+  text          String
+  type          QuestionType // multiple-choice, true-false
+  options       String[]     // possible answers
+  correctAnswer String       // the correct answer
+  position      Int          @default(0) // order of questions in quiz
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  answers       QuizAnswer[]
+
+
+}
+
+model QuizAttempt {
+  id        String       @id @default(cuid())
+ quiz       Quiz        @relation(fields: [quizId], references: [id])
+  quizId    String
+student    User        @relation(fields: [studentId], references: [id])
+  studentId String
+  answers   QuizAnswer[]
+  score     Float?
+  createdAt DateTime     @default(now())
+
+  @@index([quizId])
+  @@index([studentId])
+}
+
+model QuizAnswer {
+  id          String       @id @default(cuid())
+  attempt     QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  attemptId   String
+  question    Question     @relation(fields: [questionId], references: [id] , onDelete: Cascade)
+  questionId  String
+  userAnswer  String
+  isCorrect   Boolean @default(false)
+}
+
 
 model Lesson {
   id         String   @id @default(cuid())
   course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId   String
+  curriculum Curriculum? @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  curriculumId String?
   title      String
   content    String?  // markdown/notes
   videoUrl   String?  // signed-serving URL saved
   docUrl     String?  // pdf/docs link
+  duration   Int?     // in minutes or hours
   isPreview  Boolean  @default(false)
   position   Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
+  type       String   @default("ARTICLE") // VIDEO, ARTICLE, QUIZ
   Progress Progress[]
-
   Assignment Assignment[]
+
+  @@index([courseId])
+  @@index([curriculumId])
 }
 
 model Enrollment {
   id            String           @id @default(cuid())
-  student       User             @relation(fields: [studentId], references: [id])
+  student       User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId     String
-  course        Course           @relation(fields: [courseId], references: [id])
+  course        Course           @relation(fields: [courseId], references: [id],onDelete: Cascade)
   courseId      String
   status        EnrollmentStatus @default(PENDING)
   amount        Float
@@ -160,25 +278,33 @@ model Enrollment {
   txRef         String?          @unique
   paymentInfo   Json?
   progress      Float            @default(0) // 0-100
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  enrolledAt DateTime @default(now()) @db.Timestamp(6)
+    updatedAt     DateTime         @updatedAt
   progressRecords Progress[]
+
+    @@unique([studentId, courseId]) // prevent duplicate enrollments
+  @@index([studentId])
+  @@index([courseId])
 }
 
 model Progress {
   id          String   @id @default(cuid())
   enrollment  Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   enrollmentId String
-  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   lessonId    String
   lastPosition Float   @default(0) // seconds
   completed   Boolean  @default(false)
+  completedAt DateTime?
   updatedAt   DateTime @updatedAt
+
+  @@index([enrollmentId])
+  @@index([lessonId])
 }
 
 model Assignment {
   id         String   @id @default(cuid())
-  course     Course   @relation(fields: [courseId], references: [id])
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId   String
   lesson     Lesson?  @relation(fields: [lessonId], references: [id])
   lessonId   String?
@@ -190,6 +316,10 @@ model Assignment {
   status     String   @default("SUBMITTED")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  Submission Submission[]
+
+  @@index([courseId])
+  @@index([studentId])
 }
 
 model Certificate {
@@ -197,11 +327,24 @@ model Certificate {
   code       String   @unique
   student    User     @relation(fields: [studentId], references: [id])
   studentId  String
-  course     Course   @relation(fields: [courseId], references: [id])
+  course     Course   @relation(fields: [courseId], references: [id],onDelete: Cascade)
   courseId   String
   pdfUrl     String
   issuedAt   DateTime @default(now())
   revoked    Boolean  @default(false)
+}
+
+
+model Submission {
+  id           String   @id @default(cuid())
+  userId       String
+  assignmentId String
+  content      String?
+  grade        Int?
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id])
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
 }
 
 model PasswordResetToken {

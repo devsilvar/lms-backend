@@ -4,13 +4,13 @@ import prisma from "../config/db.js";
 
 export const generateAccessToken = (userId: string, role: string) => {
   return jwt.sign({ userId, role }, process.env.JWT_ACCESS_SECRET as string, {
-    expiresIn: "15m",
+    expiresIn: "15m", // 15 minutes
   });
 };
 
 export const generateRefreshToken = (userId: string) => {
   return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET as string, {
-    expiresIn: "7d",
+    expiresIn: "7d", // 7 days
   });
 };
 
@@ -26,7 +26,7 @@ export const generateTokens = async (userId: string, role: string) => {
     data: {
       tokenHash: hashedToken,
       userId,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     },
   });
 

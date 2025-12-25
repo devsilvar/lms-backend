@@ -1,8 +1,76 @@
 import express from "express";
 import authRoutes from "./routes/authRoutes.js";
+import instructorRoutes from "./routes/instructorRoutes.js";
+import studentRoutes from "./routes/studentRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import cors from "cors";
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 const app = express();
+// Swagger configuration
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'LMS Backend API',
+            version: '1.0.0',
+            description: 'Learning Management System API with comprehensive course, quiz, and lesson management',
+            contact: {
+                name: 'API Support',
+                email: 'support@example.com',
+            },
+        },
+        servers: [
+            {
+                url: 'http://localhost:3000',
+                description: 'Development server',
+            },
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                },
+            },
+            schemas: {
+                Course: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', description: 'Course ID' },
+                        title: { type: 'string', description: 'Course title' },
+                        description: { type: 'string', description: 'Course description' },
+                        category: { type: 'string', description: 'Course category' },
+                        level: { type: 'string', description: 'Course level (beginner, intermediate, advanced)' },
+                        price: { type: 'number', description: 'Course price' },
+                        currency: { type: 'string', description: 'Currency code' },
+                        duration: { type: 'number', description: 'Course duration in minutes' },
+                        image: { type: 'string', description: 'Course image URL' },
+                        status: { type: 'string', enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ARCHIVED'], description: 'Course status' },
+                        rating: { type: 'number', description: 'Course rating' },
+                        tags: { type: 'array', items: { type: 'string' }, description: 'Course tags' },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' },
+                    },
+                },
+            },
+        },
+        security: [
+            {
+                bearerAuth: [],
+            },
+        ],
+    },
+    apis: ['./src/routes/*.ts', './src/controllers/**/*.ts'],
+};
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'LMS API Documentation',
+}));
 app.use(cors({
     origin: function (origin, callback) {
         callback(null, origin); // allow the requesting origin dynamically
@@ -10,6 +78,9 @@ app.use(cors({
     credentials: true, // allow cookies/authorization headers
 }));
 app.use(express.json());
+// Add student course routes
+app.use('/api', studentRoutes);
+app.use('/api', instructorRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 export default app;

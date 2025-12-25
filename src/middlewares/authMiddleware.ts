@@ -27,6 +27,7 @@ export const authenticate = (
     req.user = { id: decoded.userId, role: decoded.role };
     next();
   } catch (err) {
+    console.error("Token verification failed:", err);
     return res.status(403).json({ message: "Forbidden: Invalid or expired token" });
   }
 };

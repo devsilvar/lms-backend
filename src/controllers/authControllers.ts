@@ -226,7 +226,7 @@ export const register = async (req: Request, res: Response) => {
         data: {
           userId: user.id,
           tokenHash: hashedRefreshToken,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          expiresAt: new Date(Date.now() + 50 * 60 * 1000), // 50 minutes
         },
       });
 
@@ -269,7 +269,7 @@ export const register = async (req: Request, res: Response) => {
 
 
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: any, res: Response) => {
   try {
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
@@ -293,7 +293,7 @@ await prisma.refreshToken.create({
   data: {
     userId: user.id,
     tokenHash: hashedRefreshToken,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    expiresAt: new Date(Date.now() + 50 * 60 * 1000), // 50 minutes
   },
 });
 
@@ -375,11 +375,7 @@ export const refreshToken = async (req: any, res: any) => {
       // ✅ Issue new access token only
       const accessToken = generateAccessToken(user.id, user.role);
 
-      // Optional: Fetch user from DB for fresh data
-    if (!user) return res.status(404).json({ message: "User not found" });
-    // res.json(user);
-
-      return res.json({ accessToken , user });
+      return res.json({ accessToken, user });
     });
   } catch (err) {
     console.error(err);
@@ -397,7 +393,7 @@ export const logout = async (req: any, res: any) => {
 
     // 1. Hash the incoming plain refresh token
     const hashedRefreshToken = crypto
-      .createHash("sha26")
+      .createHash("sha256")
       .update(refreshToken)
       .digest("hex");
 

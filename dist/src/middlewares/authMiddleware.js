@@ -11,6 +11,7 @@ export const authenticate = (req, res, next) => {
         next();
     }
     catch (err) {
+        console.error("Token verification failed:", err);
         return res.status(403).json({ message: "Forbidden: Invalid or expired token" });
     }
 };
