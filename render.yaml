@@ -2,9 +2,11 @@ services:
   - type: web
     name: lms-backend
     env: node
+    runtime: node
     region: oregon
     plan: free
     branch: main
+    rootDir: lms-backend
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
