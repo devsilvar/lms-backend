@@ -14,15 +14,12 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./", // Set rootDir to project root to include both src and prisma
-    // "rootDir": "./src",
+    "rootDir": "./src",
     "sourceMap": true,
     "resolveJsonModule": true
   },
   "include": [
-    "src/**/*.ts",
-    "prisma/**/*.ts",
-    "prisma.config.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules"
