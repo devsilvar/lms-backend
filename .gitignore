@@ -92,6 +92,7 @@ credentials.json
 # Internal documentation with sensitive info
 SECURITY_CONFIRMATION.md
 GITHUB_PUSH_GUIDE.md
+RENDER_DEPLOYMENT_FINAL.md
 
 # NPM
 .npm
