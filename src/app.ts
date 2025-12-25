@@ -8,7 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 
 const app = express();
-
+app.set("trust proxy", 1);
 // Swagger configuration
 const swaggerOptions = {
   definition: {
@@ -24,7 +24,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
+         url: process.env.BASE_URL || 'http://localhost:3000',
         description: 'Development server',
       },
     ],
@@ -69,6 +69,7 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
+
 // Swagger UI setup
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
@@ -84,21 +85,38 @@ const allowedOrigins = [
   'https://devrecschool.netlify.app'
 ].filter(Boolean);
 
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
+// app.use(cors({
+//   origin: function(origin, callback) {
+//     // Allow requests with no origin (mobile apps, Postman, etc.)
+//     if (!origin) return callback(null, true);
     
+//     if (allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(null, origin); // In production, you might want to restrict this
+//     }
+//   },
+//   credentials: true,
+// }));
+
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, origin); // In production, you might want to restrict this
+      return callback(null, true);
     }
+
+    return callback(new Error("Not allowed by CORS"));
   },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
