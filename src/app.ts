@@ -6,13 +6,13 @@ import userRoutes from "./routes/userRoutes.js"
 import cors from "cors";
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import prisma from "./config/db.js";
 
 const app = express();
 app.set("trust proxy", 1);
 // Swagger configuration
 const swaggerOptions = {
   definition: {
-    openapi: '3.0.0',
     info: {
       title: 'LMS Backend API',
       version: '1.0.0',
@@ -128,10 +128,23 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany();
+    res.json({ users });
+  } catch (err) {
+    console.error(err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ message: 'DB connection failed', error: errorMessage });
+  }
+});
 // Add student course routes
 app.use('/api', studentRoutes);
 app.use('/api', instructorRoutes);
 app.use("/api/user" , userRoutes);
 app.use("/api/auth", authRoutes);
+
+
 
 export default app;

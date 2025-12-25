@@ -1,6 +1,7 @@
 import app from "./app.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
+import prisma from "./config/db.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -27,6 +28,17 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Mount swagger AFTER app is created and routes are set up
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany();
+    res.json({ users });
+  } catch (err) {
+    console.error(err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ message: 'DB connection failed', error: errorMessage });
+  }
+});
 
 // Graceful shutdown handler
 const shutdown = () => {
