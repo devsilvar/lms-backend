@@ -1,3 +1,6 @@
+// Load .env BEFORE anything else so process.env.DATABASE_URL is available
+// when config modules (db.ts, cloudinary.ts, etc.) are evaluated.
+import 'dotenv/config';
 import app from "./app.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";

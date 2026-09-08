@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import 'dotenv/config';
 import { PrismaClient, Role } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
@@ -10,7 +13,21 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
 
-const pool = new Pool({ connectionString });
+// `?sslmode=require` in the URL overrides the ssl option, so strip it and
+// control TLS explicitly (Aiven uses a self-signed CA)
+const cleanConnectionString = (() => {
+  const url = new URL(connectionString);
+  url.searchParams.delete("sslmode");
+  return url.toString();
+})();
+
+const pool = new Pool({
+  connectionString: cleanConnectionString,
+  // Trust the Aiven CA if bundled, otherwise skip chain verification
+  ssl: fs.existsSync(path.join(process.cwd(), "prisma", "ca.pem"))
+    ? { ca: fs.readFileSync(path.join(process.cwd(), "prisma", "ca.pem"), "utf8") }
+    : { rejectUnauthorized: false },
+});
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
